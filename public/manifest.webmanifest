@@ -1,0 +1,19 @@
+{
+  "name": "Carmine — музыка без границ",
+  "short_name": "Carmine",
+  "description": "Бесплатная музыка без рекламы и лимитов: поиск по каталогу, подборки под твой вкус, свои плейлисты, радио и Spotify.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#070708",
+  "theme_color": "#070708",
+  "lang": "ru",
+  "categories": ["music", "entertainment"],
+  "icons": [
+    { "src": "./icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "./icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "./icons/icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "./favicon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}

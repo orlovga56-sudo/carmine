@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 460" width="1280" height="460">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0e0e11"/>
+      <stop offset="1" stop-color="#040405"/>
+    </linearGradient>
+    <linearGradient id="red" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ff6b80"/>
+      <stop offset="0.42" stop-color="#ff2145"/>
+      <stop offset="1" stop-color="#a80a25"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.18" cy="0.4" r="0.55">
+      <stop offset="0" stop-color="#ff2145" stop-opacity="0.30"/>
+      <stop offset="1" stop-color="#ff2145" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="soft" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="22"/>
+    </filter>
+  </defs>
+
+  <rect width="1280" height="460" fill="url(#bg)"/>
+  <rect width="1280" height="460" fill="url(#glow)"/>
+  <g stroke="#ffffff" stroke-opacity="0.04">
+    <path d="M0 90h1280M0 180h1280M0 270h1280M0 360h1280"/>
+  </g>
+
+  <g transform="translate(96 88) scale(0.55)">
+    <circle cx="256" cy="256" r="206" fill="none" stroke="#ffffff" stroke-opacity="0.05" stroke-width="4"/>
+    <circle cx="256" cy="256" r="170" fill="none" stroke="#ffffff" stroke-opacity="0.05" stroke-width="4"/>
+    <path d="M 383 168 A 150 150 0 1 0 383 344" fill="none" stroke="#ff2145" stroke-width="46" stroke-linecap="round" opacity="0.5" filter="url(#soft)"/>
+    <path d="M 383 168 A 150 150 0 1 0 383 344" fill="none" stroke="url(#red)" stroke-width="46" stroke-linecap="round"/>
+    <g stroke="#ff2145" stroke-width="20" stroke-linecap="round">
+      <path d="M 198 256 v -34"/>
+      <path d="M 231 256 v -66"/>
+      <path d="M 264 256 v -48"/>
+      <path d="M 297 256 v -20"/>
+    </g>
+    <circle cx="256" cy="256" r="14" fill="#0a0a0c" stroke="#ff2145" stroke-width="8"/>
+  </g>
+
+  <text x="470" y="212" font-family="Segoe UI, Arial, sans-serif" font-size="104" font-weight="800"
+        letter-spacing="12" fill="#f7f7f8">CARMINE</text>
+  <text x="474" y="262" font-family="Segoe UI, Arial, sans-serif" font-size="22" font-weight="700"
+        letter-spacing="10" fill="#ff2145">МУЗЫКА БЕЗ ГРАНИЦ</text>
+  <text x="474" y="322" font-family="Segoe UI, Arial, sans-serif" font-size="19" fill="#9c9ca6">
+    Поиск по огромному каталогу · подборки под твой вкус · радио · Spotify
+  </text>
+  <text x="474" y="352" font-family="Segoe UI, Arial, sans-serif" font-size="19" fill="#9c9ca6">
+    Открытые альбомы целиком · свои плейлисты · без рекламы и лимитов
+  </text>
+</svg>
