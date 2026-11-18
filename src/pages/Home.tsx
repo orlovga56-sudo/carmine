@@ -233,7 +233,7 @@ export function Home() {
             <h3>Это честный бесплатный плеер</h3>
             <p className="hint" style={{ margin: '4px 0 0' }}>
               Каталог и 30-секундные превью — официальный Apple iTunes API. Полные треки — из открытых
-              библиотек Internet Archive, живого радио и твоих файлов. Spotify — через официальный аккаунт.
+              библиотек Internet Archive и живого радио. Spotify — через официальный аккаунт.
             </p>
           </div>
           <button className="btn btn-ghost btn-sm" onClick={() => navigate('/settings')}>Подробнее</button>
