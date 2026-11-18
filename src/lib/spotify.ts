@@ -1,4 +1,5 @@
 import type { Track, SpotifyTokens, SpotifyProfile } from '../types'
+import { DESKTOP_REDIRECT_URI, desktop, isDesktop } from './desktop'
 
 /* ------------------------------------------------------------------ PKCE */
 
@@ -17,6 +18,7 @@ const SCOPES = [
 ].join(' ')
 
 export function redirectUri(): string {
+  if (isDesktop) return DESKTOP_REDIRECT_URI
   const path = window.location.pathname.replace(/index\.html$/, '')
   return `${window.location.origin}${path}`
 }
@@ -40,8 +42,22 @@ async function challengeFor(verifier: string): Promise<string> {
   return base64Url(digest)
 }
 
-export async function beginLogin(clientId: string): Promise<void> {
+/**
+ * Starts the Spotify PKCE flow.
+ * On the desktop the shell opens the system browser and hands the tokens back
+ * through IPC (loopback redirect), so this resolves with the refreshed tokens.
+ * In a browser it navigates away and resolves with `null`.
+ */
+export async function beginLogin(clientId: string): Promise<SpotifyTokens | null> {
   if (!clientId) throw new Error('Сначала укажи Spotify Client ID в настройках')
+  if (desktop) {
+    const tokens = await desktop.spotifyLogin(clientId)
+    return {
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
+      expiresAt: tokens.expiresAt,
+    }
+  }
   const verifier = randomString(96)
   const state = randomString(16)
   sessionStorage.setItem('carmine.spotify.verifier', verifier)
@@ -56,6 +72,7 @@ export async function beginLogin(clientId: string): Promise<void> {
     state,
   })
   window.location.href = `${AUTH}?${params.toString()}`
+  return null
 }
 
 interface TokenResponse {

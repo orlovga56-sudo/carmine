@@ -38,12 +38,23 @@ export function SpotifyPage() {
         return
       }
       updateSettings({ spotifyClientId: clientId.trim() })
-      await beginLogin(clientId.trim())
+      const tokens = await beginLogin(clientId.trim())
+      // The browser flow navigates away; the desktop shell returns tokens directly.
+      if (!tokens) return
+      setSpotify(tokens, null)
+      try {
+        const profile = await getProfile()
+        setSpotify(tokens, profile)
+        toast(`Привет, ${profile.name}!`, 'success')
+      } catch {
+        toast('Аккаунт подключён', 'success')
+      }
+      setBusy(false)
     } catch (error) {
       toast(error instanceof Error ? error.message : 'Не удалось начать вход', 'error')
       setBusy(false)
     }
-  }, [clientId, updateSettings, toast])
+  }, [clientId, updateSettings, toast, setSpotify])
 
   /* finish the OAuth redirect */
   useEffect(() => {
@@ -206,7 +217,7 @@ export function SpotifyPage() {
 
           <div className="panel">
             <h3>2. Вставь Client ID</h3>
-            <p className="hint">Client ID есть на странице твоего приложения. Он не секретный и хранится только у тебя в браузере.</p>
+            <p className="hint">Client ID есть на странице твоего приложения. Он не секретный и хранится только у тебя на устройстве.</p>
             <div className="field">
               <label>Spotify Client ID</label>
               <input

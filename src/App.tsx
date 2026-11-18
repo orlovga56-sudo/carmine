@@ -4,6 +4,7 @@ import { StoreProvider, useStore } from './store'
 import { PlayerProvider, usePlayer } from './player'
 import { useRoute, navigate, type Route } from './lib/router'
 import { cn } from './lib/format'
+import { isDesktop } from './lib/desktop'
 import { Sidebar } from './components/Sidebar'
 import { TopBar } from './components/TopBar'
 import { PlayerBar } from './components/PlayerBar'
@@ -88,6 +89,17 @@ function MobileNav() {
   )
 }
 
+function DesktopTitleBar() {
+  if (!isDesktop) return null
+  return (
+    <div className="desktop-titlebar" aria-hidden>
+      <img src={`${import.meta.env.BASE_URL}icons/icon-192.png`} alt="" />
+      <span>Carmine</span>
+      <em>No limits</em>
+    </div>
+  )
+}
+
 function Shell() {
   const route = useRoute()
   const player = usePlayer()
@@ -132,6 +144,7 @@ function Shell() {
 
   return (
     <div className="app">
+      <DesktopTitleBar />
       <Sidebar />
 
       <div className="main-wrap">

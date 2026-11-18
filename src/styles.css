@@ -237,7 +237,7 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
   color: var(--muted-2);
   border: 1px solid var(--line);
 }
-.playlist-link .meta { min-width: 0; }
+.playlist-link .meta { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 1px; }
 .playlist-link .name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .playlist-link .sub { font-size: 11px; color: var(--muted-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
@@ -1253,5 +1253,60 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
 }
+
+/* ============================ desktop shell ============================ */
+
+.desktop-titlebar { display: none; }
+
+html.desktop .desktop-titlebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 40px;
+  padding: 0 168px 0 16px;
+  background: #0a0a0c;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.055);
+  -webkit-app-region: drag;
+  user-select: none;
+  font-size: 11.5px;
+  font-weight: 800;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--text);
+}
+html.desktop .desktop-titlebar img {
+  width: 19px;
+  height: 19px;
+  border-radius: 6px;
+  box-shadow: 0 0 14px var(--accent-glow);
+}
+html.desktop .desktop-titlebar em {
+  font-style: normal;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.34em;
+  color: var(--accent);
+}
+
+html.desktop .app {
+  padding-top: 48px;
+}
+html.desktop .mobile-nav { display: none; }
+
+/* keep drag areas from swallowing clicks */
+html.desktop button,
+html.desktop a,
+html.desktop input,
+html.desktop select,
+html.desktop textarea,
+html.desktop [role='button'] {
+  -webkit-app-region: no-drag;
+}
+
 
 

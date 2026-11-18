@@ -57,10 +57,26 @@ npm run preview  # посмотреть сборку
 
 Требуется Node 20+.
 
+## Десктоп-приложение (Windows)
+
+Carmine ставится как обычная программа — ярлык на рабочем столе, отдельное окно, без браузера и без запуска сервера.
+
+```bash
+npm install
+npm run desktop    # собрать и запустить приложение локально
+npm run dist:win   # собрать установщик и portable-версию в release/
+```
+
+- `release/Carmine-Setup-1.0.0.exe` — установщик (создаёт ярлык на рабочем столе и в меню «Пуск»).
+- `release/Carmine-1.0.0-portable.exe` — один файл, без установки.
+- `npm run dev` + `npm run desktop:dev` — режим разработки: Vite с горячей перезагрузкой и окно Carmine.
+
+Для входа в Spotify в десктоп-версии добавь в Spotify Dashboard redirect URI `http://127.0.0.1:8899/callback` — приложение слушает этот локальный адрес только на время входа и получает токены напрямую из системного браузера.
+
 ## Подключение Spotify
 
 1. Создай приложение на [developer.spotify.com/dashboard](https://developer.spotify.com/dashboard).
-2. Добавь Redirect URI — приложение покажет его на странице **Spotify** (для локальной разработки это `http://localhost:5173/`, для GitHub Pages — `https://orlovga56-sudo.github.io/carmine/`).
+2. Добавь Redirect URI — приложение покажет его на странице **Spotify** (для десктопа это `http://127.0.0.1:8899/callback`, для локальной разработки — `http://localhost:5173/`, для GitHub Pages — `https://orlovga56-sudo.github.io/carmine/`).
 3. Скопируй **Client ID** и вставь его на странице Spotify или в настройках.
 4. Нажми «Войти через Spotify». Пароль вводится только на стороне Spotify — приложение его не видит.
 
@@ -89,6 +105,9 @@ npm run preview  # посмотреть сборку
 ## Структура
 
 ```
+electron/
+  main.cjs      Окно, протокол app://, вход в Spotify через 127.0.0.1:8899
+  preload.cjs   Мост window.carmineDesktop
 src/
   components/   Сайдбар, топбар, плеер, карточки, строки треков, тосты
   lib/          iTunes, Spotify (PKCE + SDK), Internet Archive, радио, роутер, кэш
