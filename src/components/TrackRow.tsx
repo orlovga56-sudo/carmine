@@ -65,6 +65,12 @@ export function TrackRow({
       <div
         className={cn('track-row', isCurrent && 'current')}
         onDoubleClick={() => player.playTracks(list, index)}
+        onClick={(event) => {
+          // Клик по строке включает трек; кнопки внутри (лайк, меню, артист) работают сами.
+          if ((event.target as HTMLElement).closest('button, a')) return
+          if (isCurrent) player.toggle()
+          else player.playTracks(list, index)
+        }}
         onContextMenu={openMenu}
       >
         <button

@@ -253,7 +253,8 @@ export function SpotifyPage() {
               <div style={{ flex: 1, minWidth: 240 }}>
                 <b style={{ fontSize: 13 }}>Spotify Web Playback SDK</b>
                 <p className="hint" style={{ margin: '4px 0 0' }}>
-                  Играет полные треки прямо в Carmine, без переключения вкладок. Нужен Premium — иначе останутся 30-секундные превью.
+                  Играет полные треки прямо в Carmine, без переключения вкладок. Нужен Premium — иначе треки из Spotify
+                  открываются в самом Spotify, а Carmine играет свой каталог.
                 </p>
               </div>
               <button className={cn('btn', sdkOn ? 'btn-ghost' : 'btn-primary')} onClick={() => void enableSdk()} disabled={busy || sdkOn}>

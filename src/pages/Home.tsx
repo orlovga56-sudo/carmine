@@ -1,13 +1,27 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Compass, Heart, Play, Radio, Shuffle, Sparkles } from 'lucide-react'
+import { Compass, Heart, Play, Plus, Radio, Shuffle } from 'lucide-react'
 import { useStore } from '../store'
 import { usePlayer } from '../player'
 import { navigate } from '../lib/router'
-import { buildMixes, getAlbum, getChartAlbums, getChartTracks, searchTracks, GENRES, type Mix } from '../lib/itunes'
+import { getAlbum, getArtist, searchTracks, GENRES, type Mix } from '../lib/itunes'
 import type { AlbumRef, Track } from '../types'
-import { CardSkeletons, GenreCard, MediaCard, Tile } from '../components/Cards'
+import { CardSkeletons, GenreCard, MediaCard } from '../components/Cards'
 import { trackCount } from '../lib/format'
 import { useHomeFeed } from '../lib/useHomeFeed'
+
+interface RailArtist {
+  id: string
+  name: string
+  artwork?: string
+}
+
+function greeting(): string {
+  const hour = new Date().getHours()
+  if (hour < 6) return 'Доброй ночи'
+  if (hour < 12) return 'Доброе утро'
+  if (hour < 18) return 'Добрый день'
+  return 'Добрый вечер'
+}
 
 export function Home() {
   const { settings, likes, history, rememberTracks, playlists } = useStore()
@@ -19,21 +33,75 @@ export function Home() {
     if (charts.length) rememberTracks(charts)
   }, [charts, rememberTracks])
 
-  const hero = useMemo(() => {
-    if (mixes.length) return mixes[0]
-    if (charts.length) {
-      return {
-        id: 'hero-chart',
-        title: 'Топ недели',
-        subtitle: 'Самое громкое прямо сейчас',
-        artwork: charts[0].artwork,
-        tracks: charts.slice(0, 15),
-      } as Mix
-    }
-    return null
-  }, [mixes, charts])
+  const likedList = useMemo(() => Object.values(likes), [likes])
 
-  const likedList = Object.values(likes)
+  const artists = useMemo(() => {
+    const map = new Map<string, RailArtist>()
+    const pools: Track[][] = [likedList, history, charts, ...mixes.map((mix) => mix.tracks)]
+    pools.forEach((pool) => {
+      pool.forEach((track) => {
+        if (!track.artistId || !track.artist) return
+        const current = map.get(track.artistId)
+        if (!current) map.set(track.artistId, { id: track.artistId, name: track.artist, artwork: track.artwork })
+        else if (!current.artwork && track.artwork) current.artwork = track.artwork
+      })
+    })
+    return [...map.values()].slice(0, 7)
+  }, [likedList, history, charts, mixes])
+
+  const pins = useMemo(() => {
+    const items: Array<{ key: string; title: string; artwork?: string; icon?: React.ReactNode; onClick: () => void }> = [
+      {
+        key: 'liked',
+        title: 'Любимые треки',
+        artwork: likedList[0]?.artwork,
+        icon: <Heart size={20} fill="currentColor" />,
+        onClick: () => navigate('/liked'),
+      },
+      { key: 'radio', title: 'Радио Carmine', icon: <Radio size={20} />, onClick: () => navigate('/radio') },
+      { key: 'open', title: 'Открытая сцена', icon: <Compass size={20} />, onClick: () => navigate('/open') },
+    ]
+    mixes.slice(0, 3).forEach((mix) => {
+      items.push({
+        key: mix.id,
+        title: mix.title,
+        artwork: mix.artwork,
+        onClick: () => player.playTracks(mix.tracks, 0, mix.title),
+      })
+    })
+    playlists.slice(0, 4).forEach((playlist) => {
+      items.push({
+        key: playlist.id,
+        title: playlist.name,
+        artwork: playlist.cover,
+        onClick: () => navigate(`/playlist/${playlist.id}`),
+      })
+    })
+    return items.slice(0, 8)
+  }, [likedList, mixes, playlists, player])
+
+  const today = useMemo(() => {
+    const picks: Mix[] = [...mixes]
+    if (charts.length) {
+      picks.push({
+        id: 'today-charts',
+        title: 'Чарты недели',
+        subtitle: 'Самое громкое прямо сейчас',
+        artwork: charts[0]?.artwork || '',
+        tracks: charts.slice(0, 20),
+      })
+    }
+    if (likedList.length) {
+      picks.push({
+        id: 'today-liked',
+        title: 'Твои любимые',
+        subtitle: trackCount(likedList.length),
+        artwork: likedList[0]?.artwork || '',
+        tracks: likedList.slice(0, 30),
+      })
+    }
+    return picks.slice(0, 8)
+  }, [mixes, charts, likedList])
 
   const openGenre = async (genre: { name: string; term: string }) => {
     setGenreLoading(genre.name)
@@ -48,89 +116,87 @@ export function Home() {
     }
   }
 
+  const playArtist = async (artist: RailArtist) => {
+    const details = await getArtist(artist.id, settings.country)
+    if (details?.tracks.length) {
+      rememberTracks(details.tracks)
+      player.playTracks(details.tracks, 0, details.artist.name)
+    }
+  }
+
   return (
     <div className="page">
-      {hero ? (
-        <section className="hero">
-          <img className="hero-cover" src={hero.artwork} alt="" />
-          <div className="hero-body">
-            <span className="hero-kicker">
-              <Sparkles size={12} /> Собрано для тебя
+      <div className="page-head">
+        <div>
+          <h1>{greeting()}</h1>
+          <div className="sub">Твоя музыка, подборки и чарты — всё в одном месте</div>
+        </div>
+        {today.length > 0 && (
+          <div className="page-head-actions">
+            <button className="btn btn-ghost btn-sm" onClick={() => player.playTracks([...today[0].tracks].sort(() => Math.random() - 0.5), 0, 'Перемешать')}>
+              <Shuffle size={15} /> Перемешать
+            </button>
+            <button className="btn btn-primary btn-sm" onClick={() => player.playTracks(today[0].tracks, 0, today[0].title)}>
+              <Play size={15} fill="currentColor" /> Слушать
+            </button>
+          </div>
+        )}
+      </div>
+
+      <section className="pins">
+        {pins.map((pin) => (
+          <button key={pin.key} className="pin" onClick={pin.onClick} title={pin.title}>
+            {pin.artwork ? <img loading="lazy" src={pin.artwork} alt="" /> : <span className="pin-icon">{pin.icon}</span>}
+            <span className="pin-name">{pin.title}</span>
+          </button>
+        ))}
+        {pins.length < 8 && (
+          <button
+            className="pin pin-add"
+            onClick={() => {
+              navigate('/search')
+            }}
+          >
+            <span className="pin-icon">
+              <Plus size={20} />
             </span>
-            <h2>{hero.title}</h2>
-            <p>{hero.subtitle}. Без рекламы, без лимитов, без подписки — просто нажми play.</p>
-            <div className="hero-actions">
-              <button
-                className="btn btn-primary"
-                onClick={() => player.playTracks(hero.tracks, 0, hero.title)}
-                disabled={!hero.tracks.length}
-              >
-                <Play size={16} fill="currentColor" /> Слушать
-              </button>
-              <button
-                className="btn btn-ghost"
-                onClick={() => {
-                  const shuffled = [...hero.tracks].sort(() => Math.random() - 0.5)
-                  player.playTracks(shuffled, 0, hero.title)
-                }}
-                disabled={!hero.tracks.length}
-              >
-                <Shuffle size={16} /> Перемешать
-              </button>
-            </div>
+            <span className="pin-name">Найти ещё</span>
+          </button>
+        )}
+      </section>
+
+      {artists.length > 0 && (
+        <section className="section">
+          <div className="section-head">
+            <h2>Любимые исполнители</h2>
+            <button className="link-btn" onClick={() => navigate('/search')}>Показать все</button>
+          </div>
+          <div className="grid-cards">
+            {artists.map((artist) => (
+              <MediaCard
+                key={artist.id}
+                title={artist.name}
+                subtitle="Исполнитель"
+                artwork={artist.artwork}
+                round
+                onOpen={() => navigate(`/artist/${artist.id}`)}
+                onPlay={() => void playArtist(artist)}
+              />
+            ))}
           </div>
         </section>
-      ) : (
-        <div className="hero" style={{ minHeight: 200 }}>
-          <div className="hero-body">
-            <span className="hero-kicker"><Sparkles size={12} /> Carmine</span>
-            <h2>Музыка. Без границ.</h2>
-            <p>Ищем для тебя треки — секунду.</p>
-          </div>
-        </div>
       )}
 
       <section className="section">
-        <div className="tiles">
-          <Tile
-            title="Любимые треки"
-            subtitle={likedList.length ? trackCount(likedList.length) : 'Добавь первый лайк'}
-            artwork={likedList[0]?.artwork}
-            icon={<Heart size={24} fill="currentColor" />}
-            onClick={() => navigate('/liked')}
-          />
-          <Tile
-            title="Радио Carmine"
-            subtitle="Бесконечный эфир"
-            icon={<Radio size={24} />}
-            onClick={() => navigate('/radio')}
-          />
-          <Tile
-            title="Открытая сцена"
-            subtitle="Полные альбомы бесплатно"
-            icon={<Compass size={24} />}
-            onClick={() => navigate('/open')}
-          />
-          <Tile
-            title={playlists[0]?.name || 'Мои плейлисты'}
-            subtitle={playlists.length ? trackCount(playlists.length) : 'Создай свой первый'}
-            artwork={playlists[0]?.cover}
-            icon={<Sparkles size={22} />}
-            onClick={() => navigate(playlists[0] ? `/playlist/${playlists[0].id}` : '/liked')}
-          />
-        </div>
-      </section>
-
-      <section className="section">
         <div className="section-head">
-          <h2><span className="dot" /> Для тебя</h2>
-          <span className="link-btn">{likedList.length ? 'На основе лайков' : 'Начни с этого'}</span>
+          <h2>Послушай сегодня</h2>
+          <span className="link-btn">{likedList.length ? 'Собрано по твоим лайкам' : 'Собрано для тебя'}</span>
         </div>
-        {loading && !mixes.length ? (
-          <div className="grid-cards"><CardSkeletons count={5} /></div>
+        {loading && !today.length ? (
+          <div className="grid-cards"><CardSkeletons count={6} /></div>
         ) : (
           <div className="grid-cards">
-            {mixes.map((mix) => (
+            {today.map((mix) => (
               <MediaCard
                 key={mix.id}
                 title={mix.title}
@@ -144,52 +210,46 @@ export function Home() {
         )}
       </section>
 
-      {history.length > 0 && (
+      {(history.length > 0 || playlists.length > 0) && (
         <section className="section">
           <div className="section-head">
-            <h2><span className="dot" /> Недавно слушал</h2>
+            <h2>Недавние</h2>
+            <button className="link-btn" onClick={() => navigate('/liked')}>Показать все</button>
           </div>
           <div className="grid-cards">
-            {history.slice(0, 6).map((track, index) => (
+            {playlists.slice(0, 3).map((playlist) => (
+              <MediaCard
+                key={playlist.id}
+                title={playlist.name}
+                subtitle={trackCount(playlist.trackIds.length)}
+                artwork={playlist.cover}
+                badge="ПЛЕЙЛИСТ"
+                onOpen={() => navigate(`/playlist/${playlist.id}`)}
+              />
+            ))}
+            {history.slice(0, Math.max(0, 6 - playlists.length)).map((track, index) => (
               <MediaCard
                 key={track.id}
                 title={track.title}
                 subtitle={track.artist}
                 artwork={track.artwork}
+                badge="ТРЕК"
                 onPlay={() => player.playTracks(history.slice(0, 30), index, 'Недавнее')}
               />
             ))}
+            <button className="card add-card" onClick={() => navigate('/search')}>
+              <span className="card-art add-card-art"><Plus size={26} /></span>
+              <span className="card-title">Добавить музыку</span>
+              <span className="card-sub">Поиск и плейлисты</span>
+            </button>
           </div>
         </section>
       )}
 
       <section className="section">
         <div className="section-head">
-          <h2><span className="dot" /> Топ-чарты</h2>
-          <button className="link-btn" onClick={() => navigate('/search?q=хиты&tab=tracks')}>Все</button>
-        </div>
-        {loading && !charts.length ? (
-          <div className="grid-cards"><CardSkeletons count={6} /></div>
-        ) : (
-          <div className="grid-cards">
-            {charts.slice(0, 12).map((track, index) => (
-              <MediaCard
-                key={track.id}
-                title={track.title}
-                subtitle={track.artist}
-                artwork={track.artwork}
-                badge={`#${index + 1}`}
-                onPlay={() => player.playTracks(charts.slice(0, 15), index, 'Топ-чарты')}
-                onOpen={() => track.albumId && navigate(`/album/${track.albumId}`)}
-              />
-            ))}
-          </div>
-        )}
-      </section>
-
-      <section className="section">
-        <div className="section-head">
-          <h2><span className="dot" /> Новые альбомы</h2>
+          <h2>Новые альбомы</h2>
+          <span className="link-btn">{settings.country}</span>
         </div>
         {loading && !albums.length ? (
           <div className="grid-cards"><CardSkeletons count={6} /></div>
@@ -217,7 +277,7 @@ export function Home() {
 
       <section className="section">
         <div className="section-head">
-          <h2><span className="dot" /> Жанры</h2>
+          <h2>Жанры</h2>
           <span className="link-btn">{genreLoading ? `Загружаем ${genreLoading}…` : 'Нажми и слушай'}</span>
         </div>
         <div className="grid-cards">

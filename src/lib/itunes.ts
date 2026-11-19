@@ -19,9 +19,16 @@ async function getJson<T>(url: string): Promise<T> {
   const cached = cacheGet<T>(url)
   if (cached) return cached
   const data = await polite(async () => {
-    const res = await fetch(url, { headers: { Accept: 'application/json' } })
-    if (!res.ok) throw new Error(`iTunes ${res.status}`)
-    return (await res.json()) as T
+    // iTunes occasionally answers 403/429/5xx on bursts — give it two more chances.
+    let lastError: unknown = null
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const res = await fetch(url, { headers: { Accept: 'application/json' } })
+      if (res.ok) return (await res.json()) as T
+      lastError = new Error(`iTunes ${res.status}`)
+      if (res.status !== 403 && res.status !== 429 && res.status < 500) break
+      await new Promise((resolve) => setTimeout(resolve, 350 * (attempt + 1)))
+    }
+    throw lastError
   })
   cacheSet(url, data, 10 * 60 * 1000)
   return data
@@ -72,42 +79,78 @@ export async function searchTracks(term: string, store = 'RU', limit = 30): Prom
     const data = await getJson<{ results: any[] }>(url)
     return (data.results || []).filter((r) => r.wrapperType === 'track').map(mapSong)
   }
-  let tracks = await run(country(store))
-  if (!tracks.length && country(store) !== 'US') tracks = await run('US')
+  let tracks: Track[] = []
+  try {
+    tracks = await run(country(store))
+  } catch {
+    tracks = []
+  }
+  // Some storefronts (RU among them) answer empty or rate-limit; the US catalog is the widest.
+  if (!tracks.length && country(store) !== 'US') {
+    tracks = await run('US').catch(() => [])
+  }
   return tracks
 }
 
 export async function searchAlbums(term: string, store = 'RU', limit = 24): Promise<AlbumRef[]> {
   const q = term.trim()
   if (!q) return []
-  const url = `${API}/search?term=${encodeURIComponent(q)}&media=music&entity=album&limit=${limit}&country=${country(store)}`
-  const data = await getJson<{ results: any[] }>(url)
-  return (data.results || []).filter((r) => r.collectionType === 'Album' || r.collectionId).map(mapAlbum)
+  const run = async (c: string) => {
+    const url = `${API}/search?term=${encodeURIComponent(q)}&media=music&entity=album&limit=${limit}&country=${c}`
+    const data = await getJson<{ results: any[] }>(url)
+    return (data.results || []).filter((r) => r.collectionType === 'Album' || r.collectionId).map(mapAlbum)
+  }
+  let albums: AlbumRef[] = []
+  try {
+    albums = await run(country(store))
+  } catch {
+    albums = []
+  }
+  if (!albums.length && country(store) !== 'US') albums = await run('US').catch(() => [])
+  return albums
 }
 
 export async function searchArtists(term: string, store = 'RU', limit = 18): Promise<ArtistRef[]> {
   const q = term.trim()
   if (!q) return []
-  const url = `${API}/search?term=${encodeURIComponent(q)}&media=music&entity=musicArtist&limit=${limit}&country=${country(store)}`
-  const data = await getJson<{ results: any[] }>(url)
-  return (data.results || [])
-    .filter((r) => r.artistId)
-    .map((r) => ({
-      id: String(r.artistId),
-      name: r.artistName || 'Артист',
-      artwork: '',
-      genre: r.primaryGenreName,
-      source: 'itunes' as const,
-    }))
+  const run = async (c: string) => {
+    const url = `${API}/search?term=${encodeURIComponent(q)}&media=music&entity=musicArtist&limit=${limit}&country=${c}`
+    const data = await getJson<{ results: any[] }>(url)
+    return (data.results || [])
+      .filter((r) => r.artistId)
+      .map((r) => ({
+        id: String(r.artistId),
+        name: r.artistName || 'Артист',
+        artwork: '',
+        genre: r.primaryGenreName,
+        source: 'itunes' as const,
+      }))
+  }
+  let artists: ArtistRef[] = []
+  try {
+    artists = await run(country(store))
+  } catch {
+    artists = []
+  }
+  if (!artists.length && country(store) !== 'US') artists = await run('US').catch(() => [])
+  return artists
 }
 
 export async function searchEverything(term: string, store = 'RU'): Promise<SearchResults> {
-  const [tracks, albums, artists] = await Promise.all([
+  const [tracks, albums, artists] = await Promise.allSettled([
     searchTracks(term, store, 20),
     searchAlbums(term, store, 12),
     searchArtists(term, store, 12),
   ])
-  return { tracks, albums, artists }
+  const pick = <T,>(result: PromiseSettledResult<T[]>, fallback: T[]): T[] =>
+    result.status === 'fulfilled' ? result.value : fallback
+  const allFailed = [tracks, albums, artists].every((result) => result.status === 'rejected')
+  if (allFailed) throw new Error('iTunes недоступен')
+  return {
+    tracks: pick(tracks, []),
+    albums: pick(albums, []),
+    artists: pick(artists, []),
+  }
 }
 
 export async function lookupSongs(ids: Array<string | number>, store = 'RU'): Promise<Track[]> {

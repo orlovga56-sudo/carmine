@@ -8,6 +8,7 @@ const crypto = require('node:crypto')
 const DIST = path.join(__dirname, '..', 'dist')
 const DEV_URL = 'http://localhost:5173'
 const isDev = process.env.CARMINE_DEV === '1' && !app.isPackaged
+if (process.env.CARMINE_USER_DATA) app.setPath('userData', process.env.CARMINE_USER_DATA)
 
 const SPOTIFY_PORT = 8899
 const SPOTIFY_REDIRECT = `http://127.0.0.1:${SPOTIFY_PORT}/callback`
@@ -128,13 +129,37 @@ function createWindow() {
 
   // Headless smoke test: CARMINE_SMOKE=<png path> renders once and exits.
   if (process.env.CARMINE_SMOKE) {
+    const logFile = `${process.env.CARMINE_SMOKE}.log`
+    const log = (line) => {
+      try {
+        fs.appendFileSync(logFile, `${line}\n`)
+      } catch {}
+    }
+    mainWindow.webContents.on('console-message', (...args) => {
+      const details = args[1] && typeof args[1] === 'object' ? args[1] : null
+      const message = details ? details.message : args[2]
+      const level = details ? details.level : args[1]
+      log(`[console.${level}] ${message}`)
+    })
+    mainWindow.webContents.on('did-fail-load', (_e, code, desc, url) => log(`[fail-load] ${code} ${desc} ${url}`))
+    mainWindow.webContents.on('render-process-gone', (_e, details) => log(`[renderer-gone] ${JSON.stringify(details)}`))
     mainWindow.webContents.once('did-finish-load', () => {
       setTimeout(async () => {
+        const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
         try {
+          if (process.env.CARMINE_SMOKE_JS) {
+            const result = await mainWindow.webContents.executeJavaScript(process.env.CARMINE_SMOKE_JS)
+            log(`[js] ${JSON.stringify(result)}`)
+            await wait(Number(process.env.CARMINE_SMOKE_JS_WAIT || 5000))
+          }
+          if (process.env.CARMINE_SMOKE_DIAG) {
+            const diag = await mainWindow.webContents.executeJavaScript(process.env.CARMINE_SMOKE_DIAG)
+            log(`[diag] ${JSON.stringify(diag)}`)
+          }
           const image = await mainWindow.webContents.capturePage()
           fs.writeFileSync(process.env.CARMINE_SMOKE, image.toPNG())
         } catch (err) {
-          console.error('smoke failed', err)
+          log(`[smoke-error] ${err && err.message}`)
         }
         app.exit(0)
       }, Number(process.env.CARMINE_SMOKE_DELAY || 4000))
@@ -255,7 +280,7 @@ ipcMain.handle('desktop:version', () => app.getVersion())
 
 /* ------------------------------------------------------------------ boot */
 
-const gotLock = app.requestSingleInstanceLock()
+const gotLock = process.env.CARMINE_SMOKE ? true : app.requestSingleInstanceLock()
 if (!gotLock) {
   app.quit()
 } else {

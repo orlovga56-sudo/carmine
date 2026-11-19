@@ -2,6 +2,7 @@
 import type { Track } from './types'
 import { useStore } from './store'
 import { spotifySdk } from './lib/spotify'
+import { desktop } from './lib/desktop'
 
 type RepeatMode = 'off' | 'all' | 'one'
 type Engine = 'audio' | 'spotify'
@@ -118,7 +119,11 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       if (engine === 'spotify') return
       setBuffering(false)
       setPlaying(false)
-      if (currentRef.current) toast('РќРµ СѓРґР°Р»РѕСЃСЊ РІРѕСЃРїСЂРѕРёР·РІРµСЃС‚Рё С‚СЂРµРє', 'error')
+      if (currentRef.current) {
+        const code = audio.error?.code
+        const reason = code === 4 ? 'формат не поддерживается' : code === 2 ? 'нет сети' : 'источник недоступен'
+        toast(`Не удалось включить трек — ${reason}`, 'error')
+      }
     }
 
     audio.addEventListener('timeupdate', onTime)
@@ -162,7 +167,18 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       const audio = getAudio()
       const url = track.streamUrl || track.previewUrl
       if (!url) {
-        toast(track.source === 'spotify' ? 'Р”Р»СЏ РїРѕР»РЅРѕРіРѕ С‚СЂРµРєР° РЅСѓР¶РµРЅ Spotify Premium, Р° РїСЂРµРІСЊСЋ РЅРµРґРѕСЃС‚СѓРїРЅРѕ' : 'РЈ С‚СЂРµРєР° РЅРµС‚ РґРѕСЃС‚СѓРїРЅРѕРіРѕ Р°СѓРґРёРѕРїРѕС‚РѕРєР°', 'error')
+        if (track.source === 'spotify') {
+          const trackId = track.uri ? track.uri.split(':').pop() : ''
+          // Spotify отдаёт превью не для всех треков — открываем такой трек в Spotify.
+          if (desktop && trackId) {
+            void desktop.openExternal(`https://open.spotify.com/track/${trackId}`)
+            toast('Spotify не даёт превью — открыл трек в Spotify', 'info')
+          } else {
+            toast('Spotify не отдаёт превью для этого трека — включи полное воспроизведение или открой его в Spotify', 'error')
+          }
+        } else {
+          toast('У трека нет доступного аудиопотока', 'error')
+        }
         setPlaying(false)
         return
       }
@@ -178,7 +194,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       } catch {
         setBuffering(false)
         setPlaying(false)
-        toast('Р‘СЂР°СѓР·РµСЂ Р·Р°Р±Р»РѕРєРёСЂРѕРІР°Р» РІРѕСЃРїСЂРѕРёР·РІРµРґРµРЅРёРµ вЂ” РЅР°Р¶РјРё Play РµС‰С‘ СЂР°Р·', 'info')
+        toast('Браузер заблокировал воспроизведение — нажми Play ещё раз', 'info')
       }
     },
     [toast],
@@ -202,7 +218,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
           await startAudio(track)
           return true
         }
-        toast(error instanceof Error ? error.message : 'Spotify РЅРµ СЃРјРѕРі Р·Р°РїСѓСЃС‚РёС‚СЊ С‚СЂРµРє', 'error')
+        toast(error instanceof Error ? error.message : 'Spotify не смог запустить трек', 'error')
         return false
       }
     },
@@ -425,7 +441,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   }, [current, toggle, next, prev])
 
   useEffect(() => {
-    document.title = current ? `${current.title} В· ${current.artist} вЂ” Carmine` : 'Carmine вЂ” РјСѓР·С‹РєР° Р±РµР· РіСЂР°РЅРёС†'
+    document.title = current ? `${current.title} · ${current.artist} — Carmine` : 'Carmine — музыка без границ'
   }, [current])
 
   const value = useMemo<PlayerValue>(

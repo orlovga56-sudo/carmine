@@ -1,50 +1,53 @@
-import { Compass, Disc3, Heart, Home, ListMusic, Music4, Plus, Radio, Search, Settings, Sparkles, Waves } from 'lucide-react'
+import { Compass, Heart, Home, Plus, Radio, Search, Settings, Sparkles } from 'lucide-react'
 import { useStore } from '../store'
 import { navigate, useRoute } from '../lib/router'
 import { cn, trackCount } from '../lib/format'
-import { usePlayer } from '../player'
 
 const logo = `${import.meta.env.BASE_URL}logo.svg`
+
+function coverTint(seed: string): string {
+  let hue = 0
+  for (let i = 0; i < seed.length; i++) hue = (hue * 31 + seed.charCodeAt(i)) % 360
+  return `linear-gradient(135deg, hsl(${hue} 52% 34%), hsl(${(hue + 42) % 360} 58% 15%))`
+}
 
 export function Sidebar() {
   const route = useRoute()
   const { playlists, createPlaylist, likes, spotifyProfile, toast } = useStore()
-  const player = usePlayer()
   const likedCount = Object.keys(likes).length
+  const likedArtwork = Object.values(likes)[0]?.artwork
 
   const isActive = (name: string) => route.name === name
 
   return (
-    <aside className="sidebar">
-      <button className="brand" onClick={() => navigate('/')} aria-label="Carmine — на главную">
+    <aside className="sidebar-rail">
+      <button className="rail-logo" onClick={() => navigate('/')} aria-label="Carmine — на главную">
         <img src={logo} alt="" />
-        <span className="brand-text">
-          <span className="brand-name">CARMINE</span>
-          <span className="brand-sub">NO LIMITS</span>
-        </span>
       </button>
 
-      <nav className="nav" aria-label="Основная навигация">
-        <button className={cn('nav-item', isActive('home') && 'active')} onClick={() => navigate('/')}>
-          <Home size={19} /> Главная
+      <nav className="rail-nav" aria-label="Основная навигация">
+        <button className={cn('rail-btn', isActive('home') && 'active')} title="Главная" onClick={() => navigate('/')}>
+          <Home size={21} />
+          <span>Главная</span>
         </button>
-        <button className={cn('nav-item', isActive('search') && 'active')} onClick={() => navigate('/search')}>
-          <Search size={19} /> Поиск
+        <button className={cn('rail-btn', isActive('search') && 'active')} title="Поиск" onClick={() => navigate('/search')}>
+          <Search size={21} />
+          <span>Поиск</span>
         </button>
-        <button className={cn('nav-item', isActive('radio') && 'active')} onClick={() => navigate('/radio')}>
-          <Radio size={19} /> Радио
+        <button className={cn('rail-btn', isActive('liked') && 'active')} title="Любимые треки" onClick={() => navigate('/liked')}>
+          <Heart size={21} />
+          <span>Любимое</span>
         </button>
-        <button className={cn('nav-item', isActive('open') && 'active')} onClick={() => navigate('/open')}>
-          <Compass size={19} /> Открытая сцена
+        <button className={cn('rail-btn', isActive('radio') && 'active')} title="Радио" onClick={() => navigate('/radio')}>
+          <Radio size={21} />
+          <span>Радио</span>
         </button>
-      </nav>
-
-      <div className="nav-divider" />
-
-      <div className="sidebar-label">
-        <span>Моя музыка</span>
+        <button className={cn('rail-btn', isActive('open') && 'active')} title="Открытая сцена" onClick={() => navigate('/open')}>
+          <Compass size={21} />
+          <span>Сцена</span>
+        </button>
         <button
-          aria-label="Создать плейлист"
+          className="rail-btn rail-add"
           title="Создать плейлист"
           onClick={() => {
             const id = createPlaylist('Новый плейлист')
@@ -52,80 +55,59 @@ export function Sidebar() {
             navigate(`/playlist/${id}`)
           }}
         >
-          <Plus size={16} />
+          <Plus size={21} />
+          <span>Создать</span>
         </button>
-      </div>
+      </nav>
 
-      <div className="sidebar-scroll">
-        <button className={cn('playlist-link', isActive('liked') && 'active')} onClick={() => navigate('/liked')}>
-          <span
-            className="ph"
-            style={{ background: 'linear-gradient(135deg, var(--accent), var(--accent-deep))', color: '#fff', border: 0 }}
+      <div className="rail-divider" />
+
+      <div className="rail-covers" aria-label="Моя музыка">
+        <button
+          className={cn('rail-cover', route.name === 'liked' && 'active')}
+          title={`Любимые треки${likedCount ? ` · ${trackCount(likedCount)}` : ''}`}
+          onClick={() => navigate('/liked')}
+        >
+          {likedArtwork ? (
+            <img src={likedArtwork} alt="" />
+          ) : (
+            <span className="rail-cover-ph liked">
+              <Heart size={18} fill="currentColor" />
+            </span>
+          )}
+        </button>
+
+        {playlists.slice(0, 9).map((playlist) => (
+          <button
+            key={playlist.id}
+            className={cn('rail-cover', route.name === 'playlist' && route.id === playlist.id && 'active')}
+            title={playlist.name}
+            onClick={() => navigate(`/playlist/${playlist.id}`)}
           >
-            <Heart size={17} fill="currentColor" />
-          </span>
-          <span className="meta">
-            <span className="name">Любимые треки</span>
-            <span className="sub">{likedCount ? trackCount(likedCount) : 'Пока пусто'}</span>
-          </span>
-        </button>
-
-        {spotifyProfile && (
-          <button className={cn('playlist-link', isActive('spotify') && 'active')} onClick={() => navigate('/spotify')}>
-            <img src={spotifyProfile.image || logo} alt="" style={{ borderRadius: '50%' }} />
-            <span className="meta">
-              <span className="name">Spotify</span>
-              <span className="sub">{spotifyProfile.product === 'premium' ? 'Premium · подключён' : 'Подключён'}</span>
-            </span>
-          </button>
-        )}
-
-        {player.queue.length > 0 && (
-          <button className="playlist-link" onClick={() => navigate('/')}>
-            <span className="ph" style={{ background: 'rgba(255,33,69,.14)', color: 'var(--accent)' }}>
-              <Waves size={17} />
-            </span>
-            <span className="meta">
-              <span className="name">Очередь</span>
-              <span className="sub">{player.current ? player.current.title : trackCount(player.queue.length)}</span>
-            </span>
-          </button>
-        )}
-
-        <div style={{ marginTop: 6 }}>
-          {playlists.map((playlist) => (
-            <button
-              key={playlist.id}
-              className={cn('playlist-link', route.name === 'playlist' && route.id === playlist.id && 'active')}
-              onClick={() => navigate(`/playlist/${playlist.id}`)}
-            >
-              {playlist.cover ? (
-                <img src={playlist.cover} alt="" />
-              ) : (
-                <span className="ph">
-                  <ListMusic size={16} />
-                </span>
-              )}
-              <span className="meta">
-                <span className="name">{playlist.name}</span>
-                <span className="sub">{trackCount(playlist.trackIds.length)}</span>
+            {playlist.cover ? (
+              <img src={playlist.cover} alt="" />
+            ) : (
+              <span className="rail-cover-ph" style={{ background: coverTint(playlist.name) }}>
+                {playlist.name.slice(0, 1).toUpperCase()}
               </span>
-            </button>
-          ))}
-        </div>
+            )}
+          </button>
+        ))}
       </div>
 
-      <div className="sidebar-foot">
-        <b><Sparkles size={13} style={{ verticalAlign: -2, marginRight: 5 }} />Подключи Spotify</b>
-        <p>Перенеси свои плейлисты и лайки в Carmine за пару кликов.</p>
-        <div style={{ display: 'flex', gap: 6 }}>
-          <button className="btn btn-primary btn-sm" onClick={() => navigate('/spotify')}>
-            <Disc3 size={14} /> Подключить
-          </button>
-          <button className="btn btn-ghost btn-sm" aria-label="Настройки" onClick={() => navigate('/settings')}>
-            <Settings size={14} />
-          </button>
-        </div>
+      <div className="rail-bottom">
+        <button className="rail-btn" title="Spotify" onClick={() => navigate('/spotify')}>
+          {spotifyProfile?.image ? (
+            <img className="rail-avatar" src={spotifyProfile.image} alt="" />
+          ) : (
+            <Sparkles size={20} />
+          )}
+          <span>Spotify</span>
+        </button>
+        <button className={cn('rail-btn', isActive('settings') && 'active')} title="Настройки" onClick={() => navigate('/settings')}>
+          <Settings size={20} />
+          <span>Ещё</span>
+        </button>
       </div>
     </aside>
   )

@@ -162,7 +162,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     const id = uid('pl')
     const playlist: Playlist = {
       id,
-      name: name.trim() || 'РњРѕР№ РїР»РµР№Р»РёСЃС‚',
+      name: name.trim() || 'Мой плейлист',
       trackIds: tracks.map((t) => t.id),
       cover: tracks[0]?.artwork,
       createdAt: Date.now(),
