@@ -102,6 +102,12 @@ export function TrackRow({
           <div className="t-title">
             {track.title}
             {track.source === 'itunes' && <span className="badge-30">30 СЕК</span>}
+            {track.source === 'archive' && (
+              <span className="badge-30" style={{ color: '#7ef0a8', borderColor: 'rgba(126,240,168,.35)' }}>ПОЛНЫЙ</span>
+            )}
+            {track.source === 'spotify' && (
+              <span className="badge-30" style={{ color: '#1ed760', borderColor: 'rgba(30,215,96,.35)' }}>SPOTIFY</span>
+            )}
             {track.source === 'radio' && <span className="badge-30" style={{ color: 'var(--accent)', borderColor: 'rgba(255,33,69,.4)' }}>LIVE</span>}
             {track.explicit && <span className="badge-30" style={{ color: '#fff' }}>E</span>}
           </div>

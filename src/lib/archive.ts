@@ -136,3 +136,23 @@ export async function getOpenItem(identifier: string): Promise<OpenItem | null> 
 }
 
 export const OPEN_GENRES = ['ambient', 'jazz', 'electronic', 'hip-hop', 'rock', 'classical', 'folk', 'experimental']
+
+/**
+ * Full-length tracks (not previews) for a free-text query.
+ * Looks up netlabel releases on archive.org and flattens their audio files.
+ */
+export async function searchFullTracks(query: string, limit = 18): Promise<Track[]> {
+  const q = query.trim()
+  if (!q) return []
+  const albums = await searchOpenMusic(q, 3)
+  if (!albums.length) return []
+  const items = await Promise.all(
+    albums.slice(0, 3).map((album) => getOpenItem(album.identifier).catch(() => null)),
+  )
+  const tracks: Track[] = []
+  items.forEach((item) => {
+    if (!item) return
+    tracks.push(...item.tracks.slice(0, 6))
+  })
+  return tracks.slice(0, limit)
+}

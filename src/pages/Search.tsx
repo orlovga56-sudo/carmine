@@ -4,14 +4,17 @@ import { useStore } from '../store'
 import { usePlayer } from '../player'
 import { navigate } from '../lib/router'
 import { GENRES, searchEverything, searchTracks, type SearchResults } from '../lib/itunes'
+import { searchFullTracks } from '../lib/archive'
 import { CardSkeletons, GenreCard, MediaCard } from '../components/Cards'
 import { TrackRow } from '../components/TrackRow'
 import { cn } from '../lib/format'
+import type { Track } from '../types'
 
 const EMPTY: SearchResults = { tracks: [], albums: [], artists: [] }
 const TABS = [
   { id: 'all', label: 'Всё' },
   { id: 'tracks', label: 'Треки' },
+  { id: 'full', label: 'Полные треки' },
   { id: 'albums', label: 'Альбомы' },
   { id: 'artists', label: 'Артисты' },
 ]
@@ -24,6 +27,27 @@ export function Search({ query, tab }: { query: string; tab: string }) {
   const [error, setError] = useState('')
   const activeTab = TABS.some((t) => t.id === tab) ? tab : 'all'
   const lastQuery = useRef('')
+  const [full, setFull] = useState<Track[]>([])
+  const [fullLoading, setFullLoading] = useState(false)
+
+  useEffect(() => {
+    const term = query.trim()
+    if (activeTab !== 'full' || !term) return
+    let alive = true
+    setFullLoading(true)
+    searchFullTracks(term, 18)
+      .then((tracks) => {
+        if (!alive) return
+        setFull(tracks)
+        rememberTracks(tracks)
+      })
+      .catch(() => alive && setFull([]))
+      .finally(() => alive && setFullLoading(false))
+    return () => {
+      alive = false
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, query])
 
   useEffect(() => {
     const term = query.trim()
@@ -140,18 +164,43 @@ export function Search({ query, tab }: { query: string; tab: string }) {
         ))}
       </div>
 
-      {loading && (
+      {loading && activeTab !== 'full' && (
         <div className="grid-cards"><CardSkeletons count={6} /></div>
       )}
 
-      {error && <div className="empty"><h3>Ошибка</h3><p>{error}</p></div>}
+      {error && activeTab !== 'full' && <div className="empty"><h3>Ошибка</h3><p>{error}</p></div>}
 
-      {nothing && (
+      {nothing && activeTab !== 'full' && (
         <div className="empty">
           <div className="icon-big"><SearchIcon size={26} /></div>
           <h3>Ничего не нашлось</h3>
           <p>Проверь написание или попробуй другой запрос. Каталог зависит от выбранного региона в настройках.</p>
         </div>
+      )}
+
+      {activeTab === 'full' && (
+        <section className="result-block">
+          <h3>Полные треки</h3>
+          <p className="hint" style={{ marginTop: -6, maxWidth: 760 }}>
+            Целые записи из Internet Archive со свободными лицензиями. Это легальный способ слушать музыку целиком —
+            но это не студийные версии коммерческих исполнителей: таких полных треков вне Spotify/Premium не существует.
+          </p>
+          {fullLoading ? (
+            <div className="grid-cards"><CardSkeletons count={5} /></div>
+          ) : full.length ? (
+            <div className="track-list">
+              {full.map((track, index) => (
+                <TrackRow key={track.id} track={track} index={index} list={full} showAlbum />
+              ))}
+            </div>
+          ) : (
+            <div className="empty">
+              <div className="icon-big"><SearchIcon size={26} /></div>
+              <h3>Полных версий не нашлось</h3>
+              <p>В открытых библиотеках нет релиза по этому запросу. Попробуй другое название или открой «Открытую сцену».</p>
+            </div>
+          )}
+        </section>
       )}
 
       {showArtists && results.artists.length > 0 && (
